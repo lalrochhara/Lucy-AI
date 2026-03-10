@@ -7,12 +7,12 @@ const GEMINI_KEY = process.env.GEMINI_KEY;
 
 export default async function handler(req, res) {
 
-  if (!req.body.message) {
+  if (!req.body?.message?.text) {
     return res.status(200).send("ok");
   }
 
   const chat_id = req.body.message.chat.id;
-  const userText = req.body.message.text;
+  const userText = req.body.message.text.trim();
 
   let reply = "";
 
@@ -29,15 +29,15 @@ export default async function handler(req, res) {
       }
     );
 
-    if (search.data.length > 0) {
+    if (search.data && search.data.length > 0) {
 
       reply = search.data[0].answer;
 
     } else {
 
-      // ASK AI
+      // ASK GEMINI AI
       const ai = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
         {
           contents: [{
             parts: [{
@@ -60,7 +60,8 @@ export default async function handler(req, res) {
           headers: {
             apikey: SUPABASE_KEY,
             Authorization: `Bearer ${SUPABASE_KEY}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            Prefer: "return=minimal"
           }
         }
       );
@@ -69,11 +70,13 @@ export default async function handler(req, res) {
 
   } catch (error) {
 
+    console.log("ERROR:", error.response?.data || error.message);
+
     reply = "Ka chhang thei lo. Eng emaw buaina a awm.";
 
   }
 
-  // SEND MESSAGE
+  // SEND MESSAGE TO TELEGRAM
   await axios.post(
     `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
     {
